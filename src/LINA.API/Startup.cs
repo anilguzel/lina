@@ -38,37 +38,22 @@ namespace LINA.API
 
         public IConfiguration Configuration { get; }
 
-        [SuppressMessage("ReSharper", "UnusedMember.Global", Justification = "Used by Autofac")]
-        public void ConfigureContainer(ContainerBuilder builder)
-        {
-            // Add any Autofac modules or registrations.
-            // This is called AFTER ConfigureServices so things you
-            // register here OVERRIDE things registered in ConfigureServices.
-            builder.RegisterType<EFPersistenceContext>().As<IPersistenceContext>().InstancePerLifetimeScope();
-        }
-
         public void ConfigureServices(IServiceCollection services)
         {
             // EF Postgresql
-            // services.AddEntityFrameworkNpgsql();
+            services.AddEntityFrameworkNpgsql();
 
             // DBContext
-            // services.AddDbContext<ApplicationDbContext>(
-            //    options => options.UseNpgsql(Configuration.GetConnectionString("Default"),
+            services.AddDbContext<ApplicationDbContext>(options =>
+                options.UseNpgsql(Configuration.GetConnectionString("Default"),
+    sqlServerOptions => sqlServerOptions.CommandTimeout(60)));
 
-            // ),
-            //    sqlServerOptions => sqlServerOptions.CommandTimeout(60));
-    //        services.AddDbContext<ApplicationDbContext>(options => options.UseNpgsql(
-    //Configuration.GetConnectionString("Default"),
-    //sqlServerOptions => sqlServerOptions.CommandTimeout(60)));
             services.AddScoped<DbContext>(provider => provider.GetRequiredService<ApplicationDbContext>());
 
             // Identity
-            services.AddIdentityCore<User>()
-                .AddDefaultTokenProviders()
-                .AddRoles<Role>()
-                .AddSignInManager();
-                //.AddEntityFrameworkStores<ApplicationDbContext>();
+            services.AddIdentity<User, Role>()
+                .AddEntityFrameworkStores<ApplicationDbContext>()
+                .AddDefaultTokenProviders();
 
             services.Configure<IdentityOptions>(
                 options =>
@@ -114,6 +99,7 @@ namespace LINA.API
                         };
                     });
 
+            services.AddScoped<IPersistenceContext, EFPersistenceContext>();
             services.AddScoped<ITokenService, JwtTokenService>();
 
             // Application services

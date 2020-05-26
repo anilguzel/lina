@@ -13,6 +13,10 @@ namespace LINA.Data.Access.EntityFramework
 
         public DbSet<Pseudo> Pseudos { get; set; }
 
+        public ApplicationDbContext(DbContextOptions options) : base(options)
+        {
+        }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
