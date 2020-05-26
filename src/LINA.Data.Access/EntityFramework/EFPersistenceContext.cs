@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using LINA.Core.Infrastructure.Cache.Abstraction;
 using LINA.Data.Access.Abstraction;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.Extensions.Logging;
 
 namespace LINA.Data.Access.EntityFramework
@@ -103,11 +104,15 @@ namespace LINA.Data.Access.EntityFramework
             return DbContext.SaveChangesAsync(cancellationToken);
         }
 
-        public async Task<(bool success, int count)> SaveChangesWithCatchAsync(CancellationToken cancellationToken = default)
+        public async Task<(bool success, int count)> SaveChangesWithCatchAsync(string userId,
+            CancellationToken cancellationToken = default)
         {
             int changes = 0;
             try
             {
+                if (!string.IsNullOrEmpty(userId))
+                    await AuditLoggingAsync(DbContext, userId);
+
                 changes = await DbContext.SaveChangesAsync(cancellationToken);
                 return (true, changes);
             }
@@ -118,10 +123,14 @@ namespace LINA.Data.Access.EntityFramework
             }
         }
 
-        public async Task SaveChangesWithCatchAndThrowAsync(CancellationToken cancellationToken = default)
+        public async Task SaveChangesWithCatchAndThrowAsync(string userId,
+            CancellationToken cancellationToken = default)
         {
             try
             {
+                if (!string.IsNullOrEmpty(userId))
+                    await AuditLoggingAsync(DbContext, userId);
+
                 await DbContext.SaveChangesAsync(cancellationToken);
             }
             catch (Exception ex)
@@ -148,6 +157,21 @@ namespace LINA.Data.Access.EntityFramework
         {
             return _cacheService.GetList<T>(cacheKey) ??
                    (List<T>)_cacheService.Set(cacheKey, DbContext.Set<T>().Where(predicate).ToList(), null, slidingExpiration);
+        }
+
+        private async Task AuditLoggingAsync(DbContext db, string userId)
+        {
+            foreach (var ent in db.ChangeTracker.Entries()
+                .Where(c =>
+                    c.State == EntityState.Added ||
+                    c.State == EntityState.Deleted ||
+                    c.State == EntityState.Modified
+                )
+            )
+            {
+                var logs = await AuditHelper.GetAuditRecordsForChangeAsync(ent, userId);
+                db.AddRange(logs);
+            }
         }
     }
 }

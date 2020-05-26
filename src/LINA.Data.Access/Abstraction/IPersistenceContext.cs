@@ -31,10 +31,10 @@ namespace LINA.Data.Access.Abstraction
         Task SaveChangesAsync(
             CancellationToken cancellationToken = default);
 
-        Task<(bool success, int count)> SaveChangesWithCatchAsync(
+        Task<(bool success, int count)> SaveChangesWithCatchAsync(string userId,
             CancellationToken cancellationToken = default);
 
-        Task SaveChangesWithCatchAndThrowAsync(
+        Task SaveChangesWithCatchAndThrowAsync(string userId,
             CancellationToken cancellationToken = default);
     }
 }
